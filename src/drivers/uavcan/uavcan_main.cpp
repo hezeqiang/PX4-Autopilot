@@ -1132,7 +1132,6 @@ void UavcanMixingInterfaceServo::mixerChanged()
 		if (i < servo_status_s::CONNECTED_SERVO_MAX) {
 			_servo_controller.servo_status().servo[i].servo_function = (uint8_t)_mixing_output.outputFunction(i);
 		}
-
 	}
 
 	_servo_controller.set_servo_count(servo_count);
