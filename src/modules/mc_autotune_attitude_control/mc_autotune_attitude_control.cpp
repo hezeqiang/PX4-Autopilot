@@ -46,7 +46,6 @@ McAutotuneAttitudeControl::McAutotuneAttitudeControl() :
 	WorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
 {
 	_autotune_attitude_control_status_pub.advertise();
-	reset();
 }
 
 McAutotuneAttitudeControl::~McAutotuneAttitudeControl()
@@ -61,14 +60,14 @@ bool McAutotuneAttitudeControl::init()
 		return false;
 	}
 
+	if (!_vehicle_torque_setpoint_sub.registerCallback()) {
+		PX4_ERR("callback registration failed");
+		return false;
+	}
+
 	_signal_filter.setParameters(_publishing_dt_s, .2f); // runs in the slow publishing loop
 
 	return true;
-}
-
-void McAutotuneAttitudeControl::reset()
-{
-	_param_mc_at_start.reset();
 }
 
 void McAutotuneAttitudeControl::Run()
@@ -91,12 +90,6 @@ void McAutotuneAttitudeControl::Run()
 		updateStateMachine(hrt_absolute_time());
 	}
 
-	// new control data needed every iteration
-	if (_state == state::idle
-	    || !_vehicle_torque_setpoint_sub.updated()) {
-		return;
-	}
-
 	if (_vehicle_status_sub.updated()) {
 		vehicle_status_s vehicle_status;
 
@@ -111,6 +104,22 @@ void McAutotuneAttitudeControl::Run()
 		if (_actuator_controls_status_sub.copy(&controls_status)) {
 			_control_power = Vector3f(controls_status.control_power);
 		}
+	}
+
+	if (_vehicle_command_sub.updated()) {
+		vehicle_command_s vehicle_command;
+
+		if (_vehicle_command_sub.copy(&vehicle_command)) {
+			if (vehicle_command.command == vehicle_command_s::VEHICLE_CMD_DO_AUTOTUNE_ENABLE) {
+				_vehicle_cmd_start_autotune = (fabsf(vehicle_command.param1 - 1.0f) < FLT_EPSILON);
+			}
+		}
+	}
+
+	// new control data needed every iteration
+	if ((_state == state::idle && !_vehicle_cmd_start_autotune)
+	    || !_vehicle_torque_setpoint_sub.updated()) {
+		return;
 	}
 
 	vehicle_torque_setpoint_s vehicle_torque_setpoint;
@@ -271,7 +280,7 @@ void McAutotuneAttitudeControl::updateStateMachine(hrt_abstime now)
 
 	switch (_state) {
 	case state::idle:
-		if (_param_mc_at_start.get()) {
+		if (_vehicle_cmd_start_autotune) {
 			if (registerActuatorControlsCallback()) {
 				_state = state::init;
 
@@ -580,8 +589,7 @@ void McAutotuneAttitudeControl::saveGainsToParams()
 
 void McAutotuneAttitudeControl::stopAutotune()
 {
-	_param_mc_at_start.set(false);
-	_param_mc_at_start.commit();
+	_vehicle_cmd_start_autotune = false;
 	_vehicle_torque_setpoint_sub.unregisterCallback();
 }
 

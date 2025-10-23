@@ -618,6 +618,8 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 
 	} else if (cmd_mavlink.command == MAV_CMD_DO_AUTOTUNE_ENABLE) {
 
+		_cmd_pub.publish(vehicle_command);
+
 		bool has_module = true;
 		autotune_attitude_control_status_s status{};
 		_autotune_attitude_control_status_sub.copy(&status);
@@ -634,13 +636,11 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 
 				switch (vehicle_status.vehicle_type) {
 				case vehicle_status_s::VEHICLE_TYPE_FIXED_WING:
-					atune_start = param_find("FW_AT_START");
-
+					atune_start = param_find("FW_AT_APPLY");
 					break;
 
 				case vehicle_status_s::VEHICLE_TYPE_ROTARY_WING:
-					atune_start = param_find("MC_AT_START");
-
+					atune_start = param_find("MC_AT_APPLY");
 					break;
 
 				default:
@@ -651,9 +651,6 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 				if (atune_start == PARAM_INVALID) {
 					has_module = false;
 
-				} else {
-					int32_t start = 1;
-					param_set(atune_start, &start);
 				}
 
 			} else {
