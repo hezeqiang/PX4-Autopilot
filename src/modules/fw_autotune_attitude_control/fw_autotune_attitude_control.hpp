@@ -102,8 +102,6 @@ private:
 
 	void Run() override;
 
-	void reset();
-
 	void checkFilters();
 
 	void updateStateMachine(hrt_abstime now);
@@ -230,7 +228,6 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::FW_AT_AXES>) _param_fw_at_axes,
-		(ParamBool<px4::params::FW_AT_START>) _param_fw_at_start,
 		(ParamInt<px4::params::FW_AT_MAN_AUX>) _param_fw_at_man_aux,
 		(ParamInt<px4::params::FW_AT_APPLY>) _param_fw_at_apply,
 

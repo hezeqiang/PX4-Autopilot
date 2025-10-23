@@ -48,7 +48,7 @@ FwAutotuneAttitudeControl::FwAutotuneAttitudeControl(bool is_vtol) :
 	_actuator_controls_status_sub(is_vtol ? ORB_ID(actuator_controls_status_1) : ORB_ID(actuator_controls_status_0))
 {
 	_autotune_attitude_control_status_pub.advertise();
-	reset();
+
 }
 
 FwAutotuneAttitudeControl::~FwAutotuneAttitudeControl()
@@ -71,11 +71,6 @@ bool FwAutotuneAttitudeControl::init()
 	}
 
 	return true;
-}
-
-void FwAutotuneAttitudeControl::reset()
-{
-	_param_fw_at_start.reset();
 }
 
 void FwAutotuneAttitudeControl::Run()
@@ -117,8 +112,8 @@ void FwAutotuneAttitudeControl::Run()
 		}
 	}
 
-
-	_want_start_autotune = isAuxEnableSwitchEnabled() || _vehicle_cmd_start_autotune ;
+	_aux_switch_en = isAuxEnableSwitchEnabled();
+	_want_start_autotune = _vehicle_cmd_start_autotune || _aux_switch_en;
 
 	// new control data needed every iteration
 	if ((_state == state::idle && !_want_start_autotune)
@@ -322,7 +317,7 @@ void FwAutotuneAttitudeControl::updateStateMachine(hrt_abstime now)
 	switch (_state) {
 	case state::idle:
 
-		if (_param_fw_at_start.get() || _want_start_autotune) {
+		if (_want_start_autotune) {
 
 			mavlink_log_info(&_mavlink_log_pub, "Autotune started");
 			_state = state::init;
@@ -553,8 +548,6 @@ void FwAutotuneAttitudeControl::updateStateMachine(hrt_abstime now)
 			mavlink_log_info(&mavlink_log_pub, "Autotune returned to idle");
 			_state = state::idle;
 			_vehicle_cmd_start_autotune = false;
-			_param_fw_at_start.set(false);
-			_param_fw_at_start.commit();
 		}
 
 		break;
