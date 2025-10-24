@@ -76,24 +76,32 @@ public:
 		if (uORB::SubscriptionCallbackWorkItem::update(&battery)) {
 			uavcan::equipment::power::BatteryInfo battery_info{};
 			battery_info.voltage = battery.voltage_v;
-			battery_info.current = fabs(battery.current_a);
+			battery_info.current =
+				battery.current_a; // positive current is discharge, PR on DSDL definition to clarify this is pending
 			battery_info.temperature = battery.temperature - atmosphere::kAbsoluteNullCelsius; // convert from C to K
-			battery_info.full_charge_capacity_wh = battery.capacity;
-			battery_info.remaining_capacity_wh = battery.remaining * battery.capacity;
-			battery_info.state_of_charge_pct = battery.remaining * 100;
+			battery_info.full_charge_capacity_wh = battery.full_charge_capacity_wh;
+			battery_info.remaining_capacity_wh = battery.remaining_capacity_wh;
+			battery_info.state_of_charge_pct = battery.remaining * 100.0f;
 			battery_info.state_of_charge_pct_stdev = battery.max_error;
+			battery_info.battery_id = battery.id;
 			battery_info.model_instance_id = 0; // TODO: what goes here?
-			battery_info.model_name = "ARK BMS Rev 0.2";
-			battery_info.battery_id = battery.serial_number;
-			battery_info.hours_to_full_charge = 0; // TODO: Read BQ40Z80_TIME_TO_FULL
+			battery_info.model_name = "PX4 CAN Battery";
+
+			// State of health
 			battery_info.state_of_health_pct = battery.state_of_health;
 
-			if (battery.current_a > 0.0f) {
-				battery_info.status_flags = uavcan::equipment::power::BatteryInfo::STATUS_FLAG_CHARGING;
+			// Status flags (inverted from battery.cpp line 127)
+			uint8_t status_flags = 0;
 
-			} else {
-				battery_info.status_flags = uavcan::equipment::power::BatteryInfo::STATUS_FLAG_IN_USE;
+			if (battery.connected) {
+				status_flags |= uavcan::equipment::power::BatteryInfo::STATUS_FLAG_IN_USE;
 			}
+
+			if (battery.warning == battery_status_s::STATE_CHARGING) {
+				status_flags |= uavcan::equipment::power::BatteryInfo::STATUS_FLAG_CHARGING;
+			}
+
+			battery_info.status_flags = status_flags;
 
 			uavcan::Publisher<uavcan::equipment::power::BatteryInfo>::broadcast(battery_info);
 
