@@ -1,0 +1,12 @@
+menuconfig MODULES_MC_SE3_GEO_POS_CONTROL
+	bool "mc_se3_geo_pos_control"
+	default n
+	---help---
+		Enable support for SE3 geometric position control for multicopters
+
+menuconfig USER_MC_SE3_GEO_POS_CONTROL
+	bool "mc_se3_geo_pos_control running as userspace module"
+	default n
+	depends on BOARD_PROTECTED && MODULES_MC_SE3_GEO_POS_CONTROL
+	---help---
+		Put mc_se3_geo_pos_control in userspace memory
